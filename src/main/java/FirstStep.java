@@ -164,11 +164,11 @@ public static class Combiner extends Reducer<Text, Text, Text, Text> {
     public static class PartitionerClass extends Partitioner<Text, IntWritable> {
         @Override
         public int getPartition(Text key, IntWritable value, int numPartitions) {
-            String year = key.toString().split(",")[2];
+            String decade = key.toString().split(",")[2];
 
            // check all decades from 1500 to 2020[150 to 202)
             for(int i=0; i<71; i++) {
-                if (Integer.toString(i + 150).equals(year))
+                if (Integer.toString(i + 150).equals(decade))
                     return (i % numPartitions);
             }
             return 0;
