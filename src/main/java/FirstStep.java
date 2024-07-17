@@ -29,7 +29,6 @@ public class FirstStep {
         private final static IntWritable one = new IntWritable(1);
         private Text word = new Text();
         Map<String, Boolean> StopWords = new HashMap<>();
-        String[] symbols = { "\"", "!", "#", "*", "+", "'", ",", "`", "/", "-", "@" };
         String[] StopWordsArray = {
                 "״", "׳", "של", "רב", "פי", "עם", "עליו", "עליהם", "על", "עד", "מן", "מכל", "מי", "מהם", "מה", "מ", "למה",
                 "לכל", "לי", "לו", "להיות", "לה", "לא", "כן", "כמה", "כלי", "כל", "כי", "יש", "ימים", "יותר", "יד", "י", "זה",
@@ -40,7 +39,7 @@ public class FirstStep {
                 "השמים", "הזאת", "הדברים", "הדבר", "הבית", "האמת", "דברי", "במקום", "בהם", "אמרו", "אינם", "אחרי",
                 "אותם", "אדם", "(", "חלק", "שני", "שכל", "שאר", "ש", "ר", "פעמים", "נעשה", "ן", "ממנו", "מלא", "מזה", "ם",
                 "לפי", "ל", "כמו", "כבר", "כ", "זו", "ומה", "ולכל", "ובין", "ואין", "הן", "היתה", "הא", "ה", "בל", "בין",
-                "בזה", "ב", "אף", "אי", "אותה", "או", "אבל", "א","\"", "!", "#", "*", "+", "'", ",", "`", "/", "-", "@","="
+                "בזה", "ב", "אף", "אי", "אותה", "או", "אבל", "א","\"", "!", "#", "*", "+", "'", ",", "`", "/", "-", "@","=","$","%","—"
         };
 
 
@@ -64,16 +63,8 @@ public class FirstStep {
             boolean Stop = false;
 
             try {
-                // System.out.println("Key: " + key.toString() + " Value: " + value.toString());
                 Configuration c= context.getConfiguration();
-
-//                if(key.get()==13)
-//                {
-//                        c.set(key.toString(), value.toString());
-//                        c.set("changed", "changed");
-//
-//                }
-
+                //line Format: w1 w2 /t year /t count
                 String[] line = value.toString().split("\t");
                 //contains the 2 words of the google 2grams
                 String [] words= line[0].split(" ");
@@ -95,9 +86,6 @@ public class FirstStep {
                         context.write(new Text(word1 + "," + "*" + "," + decade), new Text(count)); // (w1,*,decade	count)
                         context.write(new Text(word1 + "," + word2 + "," + decade), new Text(count)); // (w1,w2,decade	count)
 
-                        // Relying on Hadoop's sorting mechanism, we will receive <w1,*> before <w1,w2>, <w1,w3>, <w1,w4>, etc.
-                        // This ensures that in the reduce() method, we already know the value of c(w1).
-                        // We can then use this value in the <w1,w2> key-value pair to proceed to the next step.
 
 
                         context.getCounter("DCounter", decadeCounterName).increment(Integer.parseInt(count));	//inc the proper decade counter
@@ -108,14 +96,13 @@ public class FirstStep {
             }
         }
 
-
             }
 
 
 
     public static class ReducerClass extends Reducer<Text,Text,Text,Text> {
 
-        int cw1 = 0;
+        int cword1 = 0;
 
         protected void setup(Context context) throws IOException, InterruptedException {
             System.out.println("setup of reduce() step1");
@@ -127,17 +114,16 @@ public class FirstStep {
 
             try {
                 if (key.toString().contains("*")) {	//<w,*>
-                    cw1 = 0;
+                    cword1 = 0;
                     for (Text val : values)
-                        cw1 = cw1 + Integer.parseInt(val.toString());
-                    //System.out.println("step1 Reduce(): =====> key: " + key.toString() + " cw1: " + cw1);
+                        cword1 = cword1 + Integer.parseInt(val.toString());
                 } else {							//<W1, W2>
                     for (Text val : values) {
                         sum = sum + Integer.parseInt(val.toString());
                     }
 
                     //each (w1,w2) emits c(w1,w2)@c(w1)
-                    context.write(key, new Text(sum + "@" + cw1));
+                    context.write(key, new Text(sum + "@" + cword1));
 
                 }
             }
@@ -155,12 +141,12 @@ public static class Combiner extends Reducer<Text, Text, Text, Text> {
     @Override
     protected void reduce(Text key, Iterable<Text> values, Context context)
             throws IOException, InterruptedException {
-        int count = 0;
+        int sum = 0;
         try {
             for (Text txt : values) {
-                count += Integer.parseInt(txt.toString());
+                sum += Integer.parseInt(txt.toString());
             }
-            context.write(key, new Text(String.valueOf(count)));
+            context.write(key, new Text(String.valueOf(sum)));
         } catch (Exception e) {
 
             e.printStackTrace();
@@ -172,13 +158,13 @@ public static class Combiner extends Reducer<Text, Text, Text, Text> {
     public static class PartitionerClass extends Partitioner<Text, Text> {
         @Override
         public int getPartition(Text key, Text value, int numPartitions) {
-            String decade = key.toString().split(",")[2];
-
-           // check all decades from 1500 to 2020[150 to 202)
-            for(int i=0; i<71; i++) {
-                if (Integer.toString(i + 150).equals(decade))
+            String[] decades = {"153", "154", "156", "162", "167", "168","169", "170", "175", "176",
+                    "178", "179", "180", "181", "182", "183", "184", "185", "186", "187", "188",
+                    "189", "190", "191", "192", "193", "194", "195", "196", "197", "198", "199", "200"};
+            String current_year = key.toString().split(",")[2];
+            for(int i=0; i<decades.length; i++)
+                if(decades[i].equals(current_year))
                     return (i % numPartitions);
-            }
             return 0;
         }
         }

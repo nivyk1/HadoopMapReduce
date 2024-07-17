@@ -23,21 +23,19 @@ public class StepsRunner {
         String time = args[4];
         String output1 = output + "FirstStepOutput" + time + "/";
         Configuration conf1 = new Configuration();
-
+       // conf1.set("mapreduce.input.fileinputformat.split.maxsize", "8937398");
         conf1.set("fs.s3a.access.key", "AKIA3FLDYNYIGCCGAHPZ");
         conf1.set("fs.s3a.secret.key", "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");
         conf1.set("fs.s3a.endpoint", "s3.amazonaws.com");
         conf1.set("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem");
-        conf1.set("13", "niv");
-        System.out.println("Configuring Step 1");
+        System.out.println("Configuring First Step");
         Job job1 = Job.getInstance(conf1, "FirstStep");
         MultipleInputs.addInputPath(job1, new Path(new URI(input)), SequenceFileInputFormat.class,
                 FirstStep.MapperClass.class);
-        System.out.println("File chached");
         job1.setJarByClass(FirstStep.class);
         job1.setMapperClass(FirstStep.MapperClass.class);
         job1.setPartitionerClass(FirstStep.PartitionerClass.class);
-        //job.setCombinerClass(FirstStep.Combiner.class);
+        job1.setCombinerClass(FirstStep.Combiner.class);
         job1.setReducerClass(FirstStep.ReducerClass.class);
         job1.setNumReduceTasks(33);
         job1.setMapOutputKeyClass(Text.class);
@@ -46,13 +44,11 @@ public class StepsRunner {
         job1.setOutputValueClass(Text.class);
         job1.setOutputFormatClass(TextOutputFormat.class);
         FileOutputFormat.setOutputPath(job1, new Path(output1));
-        System.out.println("Launching Step 1");
+        System.out.println("Launching First Step");
         if (job1.waitForCompletion(true)) {
-            System.out.println("Step 1 finished");
-            System.out.println(job1.getConfiguration().get(conf1.get(String.valueOf(13))));
-            System.out.println (job1.getConfiguration().get("changed"));
+            System.out.println("First Step finished");
         } else {
-            System.out.println("Step 1 failed ");
+            System.out.println("First Step failed ");
         }
 
 
@@ -71,19 +67,17 @@ public class StepsRunner {
 
         jobCounters = job1.getCounters().getGroup("DCounter");
         for (Counter counter : jobCounters){
-            System.out.println("Passing " + counter.getName() + " with value " + counter.getValue() + " to step 2");
-            conf2.set(counter.getName(), String.valueOf(counter.getValue()) );
             conf3.set(counter.getName(), String.valueOf(counter.getValue()) );
         }
 
-        System.out.println("Configuring Step 2");
-        Job job2 = Job.getInstance(conf2, "Step2");
+        System.out.println("Configuring Second Step");
+        Job job2 = Job.getInstance(conf2, "SecondStep");
         job2.setJarByClass(SecondStep.class);
         job2.setMapperClass(SecondStep.MapperClass.class);
-        job2.setPartitionerClass(SecondStep.PartitionerClass.class);
+        job2.setPartitionerClass(FirstStep.PartitionerClass.class);
         job2.setReducerClass(SecondStep.ReducerClass.class);
 
-        //job2.setCombinerClass(SecondStep.Combiner.class);
+        job2.setCombinerClass(SecondStep.Combiner.class);
 
         job2.setMapOutputKeyClass(Text.class);
         job2.setMapOutputValueClass(Text.class);
@@ -92,11 +86,11 @@ public class StepsRunner {
         job2.setNumReduceTasks(33);
         FileInputFormat.setInputPaths(job2, new Path(output1));
         FileOutputFormat.setOutputPath(job2, new Path(output2));
-        System.out.println("Launching Step 2");
+        System.out.println("Starting Second Step ");
         if (job2.waitForCompletion(true)) {
-            System.out.println("Step 2 finished");
+            System.out.println("Second Step finished");
         } else {
-            System.out.println("Step 2 failed ");
+            System.out.println("Second Step failed");
         }
 
 
@@ -104,7 +98,7 @@ public class StepsRunner {
 
         System.out.println();
         String output3 = output + "Step3Output" + time + "/";
-        System.out.println("Configuring Step 3");
+        System.out.println("Configuring Third Step");
 
         System.out.println(output3);
         conf3.set("fs.s3a.access.key", "AKIA3FLDYNYIGCCGAHPZ");
@@ -116,14 +110,12 @@ public class StepsRunner {
         conf3.set("relMinPmi",relMinPmi);
         
 
-        Job job3 = Job.getInstance(conf3, "Step3");
+        Job job3 = Job.getInstance(conf3, "ThirdStep");
         job3.setJarByClass(ThirdStep.class);
         job3.setMapperClass(ThirdStep.MapperClass.class);
         job3.setReducerClass(ThirdStep.ReducerClass.class);
         job3.setPartitionerClass(ThirdStep.PartitionerClass.class);
 
-        //no need for combiner in 3rd step (every key is a unique bigram with year and logLambda value)
-        //job3.setCombinerClass(Step3.Combiner.class);
 
         job3.setMapOutputKeyClass(Text.class);
         job3.setNumReduceTasks(33);
@@ -133,9 +125,9 @@ public class StepsRunner {
         job3.setOutputValueClass(Text.class);
         FileInputFormat.addInputPath(job3, new Path(output2));
         FileOutputFormat.setOutputPath(job3, new Path(output3));
-        System.out.println("Launching Step 3");
+        System.out.println("Starting Third Step");
         job3.waitForCompletion(true);
-        System.out.println("All steps are done");
+        System.out.println("Job flow done");
     }
 }
 
