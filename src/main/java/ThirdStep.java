@@ -17,6 +17,7 @@ public class ThirdStep {
         @Override
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             try {
+                System.out.println("entering map of step3");
                 String[] tmp = value.toString().split("\t");
                 String[] prevKey = tmp[0].split(",");
                 String w1 = prevKey[0];
@@ -25,29 +26,33 @@ public class ThirdStep {
                 Double cw1 = Double.valueOf(prevKey[3]);
                 Double cw2 = Double.valueOf(prevKey[4]);
                 Double cw1w2 = Double.valueOf(tmp[1]);
-                String NcounterName = "N_" + decade;
-                double N=Double.valueOf(context.getCounter("DCounter",NcounterName).getValue());
+                System.out.println("cw1w2:"+cw1w2);
+                String NcounterName = "D_" + decade;
+                String s= context.getConfiguration().get(NcounterName);
+                double N=Double.parseDouble(context.getConfiguration().get(NcounterName));
+               // double N=Double.valueOf(context.getCounter("DCounter",NcounterName).getValue());
+
 
 
                 double pmi= Math.log(cw1w2)+Math.log(N)-Math.log(cw1)- Math.log(cw2);
-                double pw1w2=cw1w2/N;
-                double npmi=pmi/(-(Math.log(pw1w2)));
+               double pw1w2=cw1w2/N;
+                double npmi=pmi/(-(Math.log(Math.abs(pw1w2))));
+                long saclednpmi = (long) (npmi * 1000000000);
+                context.getCounter("NMPISUM", "S_" + decade).increment(saclednpmi);
 
-               long saclednpmi=(long) (npmi*1000000000);
+                if(npmi>0 && npmi!=1) {
+                    //multiply by -1 so Hadoop sorts it and in reduce() we multiply by -1 again to get the npmi in DESC order
+                    //emited key:"npmi w1 w2 decade"
 
-               context.getCounter("NMPISUM", "S_"+decade).increment(saclednpmi);
-
-
-
-
-                //multiply by -1 so Hadoop sorts it and in reduce() we multiply by -1 again to get the npmi in DESC order
-                //emited key:"-npmi w1 w2 decade"
-                context.write(new Text(((-1) * npmi) + "," + w1 + "," + w2 + "," + decade), new Text(String.valueOf(cw1w2)));
+                    context.write(new Text(npmi + " " + w1 + " " + w2 + " " + decade), new Text(String.valueOf(cw1w2)));
+                }
 
 
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            System.out.println("exiting map of step3");
         }
     }
 
@@ -63,9 +68,11 @@ public class ThirdStep {
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 
             //emited key:"-npmi w1 w2 decade"
-
+            System.out.println("entering reduce of step3");
             String []tmp =key.toString().split(" ");
-            double npmi= Double.parseDouble(tmp[0])*(-1);
+            double npmi= (Double.parseDouble(tmp[0]));
+
+            System.out.println("reducer npmi:"+npmi);
             String w1= tmp[1];
             String w2= tmp[2];
             int decade= Integer.parseInt(tmp[3])*10;
@@ -74,17 +81,18 @@ public class ThirdStep {
           //
             double counter=((double)(context.getCounter("NMPISUM", "S_"+decade).getValue()))/1000000000;
 
-            if(npmi/counter>=relMinPmi || npmi>=minPmi) {
+            if(npmi/counter>=relMinPmi || npmi>=minPmi  ){
+                System.out.println("entered reduce writing section");
                 context.write(new Text(String.valueOf(decade)+" "+w1+" "+w2),new Text(String.valueOf(npmi)));
             }
 
-
+            System.out.println("exiting reduce of step3");
             }
         }
-    public static class PartitionerClass extends Partitioner<Text, IntWritable> {
+    public static class PartitionerClass extends Partitioner<Text, Text> {
         @Override
-        public int getPartition(Text key, IntWritable value, int numPartitions) {
-            String decade = key.toString().split(",")[3];
+        public int getPartition(Text key, Text value, int numPartitions) {
+            String decade = key.toString().split(" ")[3];
 
             // check all decades from 1500 to 2020[150 to 202)
             for(int i=0; i<71; i++) {

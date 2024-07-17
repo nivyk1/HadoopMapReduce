@@ -57,9 +57,9 @@ public class SecondStep {
             }
         }
     }
-    public static class PartitionerClass extends Partitioner<Text, IntWritable> {
+    public static class PartitionerClass extends Partitioner<Text, Text> {
         @Override
-        public int getPartition(Text key, IntWritable value, int numPartitions) {
+        public int getPartition(Text key, Text value, int numPartitions) {
             String decade = key.toString().split(",")[2];
 
             // check all decades from 1500 to 2020[150 to 202)

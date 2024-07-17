@@ -11,10 +11,13 @@ import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+
+import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -26,39 +29,52 @@ public class FirstStep {
         private final static IntWritable one = new IntWritable(1);
         private Text word = new Text();
         Map<String, Boolean> StopWords = new HashMap<>();
+        String[] symbols = { "\"", "!", "#", "*", "+", "'", ",", "`", "/", "-", "@" };
+        String[] StopWordsArray = {
+                "״", "׳", "של", "רב", "פי", "עם", "עליו", "עליהם", "על", "עד", "מן", "מכל", "מי", "מהם", "מה", "מ", "למה",
+                "לכל", "לי", "לו", "להיות", "לה", "לא", "כן", "כמה", "כלי", "כל", "כי", "יש", "ימים", "יותר", "יד", "י", "זה",
+                "ז", "ועל", "ומי", "ולא", "וכן", "וכל", "והיא", "והוא", "ואם", "ו", "הרבה", "הנה", "היו", "היה", "היא",
+                "הזה", "הוא", "דבר", "ד", "ג", "בני", "בכל", "בו", "בה", "בא", "את", "אשר", "אם", "אלה", "אל", "אך", "איש",
+                "אין", "אחת", "אחר", "אחד", "אז", "אותו", "־", "^", "?", ";", ":", "1", ".", "-", "*", "\"", "!", "שלשה",
+                "בעל", "פני", ")", "גדול", "שם", "עלי", "עולם", "מקום", "לעולם", "לנו", "להם", "ישראל", "יודע", "זאת",
+                "השמים", "הזאת", "הדברים", "הדבר", "הבית", "האמת", "דברי", "במקום", "בהם", "אמרו", "אינם", "אחרי",
+                "אותם", "אדם", "(", "חלק", "שני", "שכל", "שאר", "ש", "ר", "פעמים", "נעשה", "ן", "ממנו", "מלא", "מזה", "ם",
+                "לפי", "ל", "כמו", "כבר", "כ", "זו", "ומה", "ולכל", "ובין", "ואין", "הן", "היתה", "הא", "ה", "בל", "בין",
+                "בזה", "ב", "אף", "אי", "אותה", "או", "אבל", "א","\"", "!", "#", "*", "+", "'", ",", "`", "/", "-", "@","="
+        };
 
-        String [] Specialchars = { "\"", "!", "#", "*", "+", "'", ",", "`", "/", "-", "@" };
-        Map<String, Boolean> SpecialcharsMap = new HashMap<>();
 
         protected void setup(Context context) throws IOException, InterruptedException {
-            Configuration conf = context.getConfiguration();
-            String stopwordsFilePath = conf.get("stopwords.heb.path");
-            FileSystem fs = FileSystem.get(conf);
-            BufferedReader buffer = new BufferedReader(new InputStreamReader(fs.open(new Path(stopwordsFilePath))));
-            String line;
-            while ((line = buffer.readLine()) != null) {
-                StopWords.put(line.trim(), true);
-            }
-            buffer.close();
 
-            for (String s:Specialchars)
-            {
-                SpecialcharsMap.put(s,true);
-            }
+            System.out.println("entering setup");
+            Configuration conf = context.getConfiguration();
+         for(String s :  StopWordsArray)
+         {
+          StopWords.put(s,true)   ;
+         }
+
+            System.out.println("existing setup");
 
         }
 
 
         @Override
         public void map(LongWritable key, Text value, Context context) throws IOException,  InterruptedException {
-
+           System.out.println("Entering map method with key: "+key+"and value: "+value);
             boolean Stop = false;
 
             try {
                 // System.out.println("Key: " + key.toString() + " Value: " + value.toString());
+                Configuration c= context.getConfiguration();
+
+//                if(key.get()==13)
+//                {
+//                        c.set(key.toString(), value.toString());
+//                        c.set("changed", "changed");
+//
+//                }
 
                 String[] line = value.toString().split("\t");
-
                 //contains the 2 words of the google 2grams
                 String [] words= line[0].split(" ");
 
@@ -73,14 +89,6 @@ public class FirstStep {
                     if (StopWords.containsKey(word1) || StopWords.containsKey(word2)) {
                         Stop = true;
                     }
-
-                    for (String specialC : Specialchars) {
-                        if (word1.contains(specialC) || word2.contains(specialC)) {
-                            Stop = true;
-                            break;
-                        }
-                    }
-
 
                     if (!Stop) {
 
@@ -161,9 +169,9 @@ public static class Combiner extends Reducer<Text, Text, Text, Text> {
 }
 
 
-    public static class PartitionerClass extends Partitioner<Text, IntWritable> {
+    public static class PartitionerClass extends Partitioner<Text, Text> {
         @Override
-        public int getPartition(Text key, IntWritable value, int numPartitions) {
+        public int getPartition(Text key, Text value, int numPartitions) {
             String decade = key.toString().split(",")[2];
 
            // check all decades from 1500 to 2020[150 to 202)
