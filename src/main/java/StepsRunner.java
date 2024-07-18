@@ -35,7 +35,7 @@ public class StepsRunner {
         job1.setJarByClass(FirstStep.class);
         job1.setMapperClass(FirstStep.MapperClass.class);
         job1.setPartitionerClass(FirstStep.PartitionerClass.class);
-        job1.setCombinerClass(FirstStep.Combiner.class);
+        //job1.setCombinerClass(FirstStep.Combiner.class);
         job1.setReducerClass(FirstStep.ReducerClass.class);
         job1.setNumReduceTasks(33);
         job1.setMapOutputKeyClass(Text.class);
@@ -77,7 +77,7 @@ public class StepsRunner {
         job2.setPartitionerClass(FirstStep.PartitionerClass.class);
         job2.setReducerClass(SecondStep.ReducerClass.class);
 
-        job2.setCombinerClass(SecondStep.Combiner.class);
+      //  job2.setCombinerClass(SecondStep.Combiner.class);
 
         job2.setMapOutputKeyClass(Text.class);
         job2.setMapOutputValueClass(Text.class);

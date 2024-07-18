@@ -59,42 +59,42 @@ public class FirstStep {
 
         @Override
         public void map(LongWritable key, Text value, Context context) throws IOException,  InterruptedException {
-           System.out.println("Entering map method with key: "+key+"and value: "+value);
-            boolean Stop = false;
 
-            try {
-                Configuration c= context.getConfiguration();
-                //line Format: w1 w2 /t year /t count
-                String[] line = value.toString().split("\t");
-                //contains the 2 words of the google 2grams
-                String [] words= line[0].split(" ");
+                System.out.println("Entering map method with key: " + key + "and value: " + value);
+                boolean Stop = false;
 
-                if (words.length == 2) {
-                    String word1 =words[0];
-                    String word2 = words[1];
-                    String decade = String.valueOf(Integer.parseInt(line[1])/10);	//for example: 1987 -> 198
-                    String count = line[2];
-                    String decadeCounterName = "D_" + decade;
+                try {
+                    Configuration c = context.getConfiguration();
+                    //line Format: w1 w2 /t year /t count
+                    String[] line = value.toString().split("\t");
+                    //contains the 2 words of the google 2grams
+                    String[] words = line[0].split(" ");
+
+                    if (words.length == 2) {
+                        String word1 = words[0];
+                        String word2 = words[1];
+                        String decade = String.valueOf(Integer.parseInt(line[1]) / 10);    //for example: 1987 -> 198
+                        String count = line[2];
+                        String decadeCounterName = "D_" + decade;
 
 
-                    if (StopWords.containsKey(word1) || StopWords.containsKey(word2)) {
-                        Stop = true;
+                        if (StopWords.containsKey(word1) || StopWords.containsKey(word2)) {
+                            Stop = true;
+                        }
+
+                        if (!Stop) {
+
+                            context.write(new Text(word1 + "," + "*" + "," + decade), new Text(count)); // (w1,*,decade	count)
+                            context.write(new Text(word1 + "," + word2 + "," + decade), new Text(count)); // (w1,w2,decade	count)
+
+
+                            context.getCounter("DCounter", decadeCounterName).increment(Integer.parseInt(count));    //inc the proper decade counter
+                        }
                     }
-
-                    if (!Stop) {
-
-                        context.write(new Text(word1 + "," + "*" + "," + decade), new Text(count)); // (w1,*,decade	count)
-                        context.write(new Text(word1 + "," + word2 + "," + decade), new Text(count)); // (w1,w2,decade	count)
-
-
-
-                        context.getCounter("DCounter", decadeCounterName).increment(Integer.parseInt(count));	//inc the proper decade counter
-                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
-        }
 
             }
 
