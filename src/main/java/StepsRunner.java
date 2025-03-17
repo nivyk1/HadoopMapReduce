@@ -24,8 +24,9 @@ public class StepsRunner {
         String output1 = output + "FirstStepOutput" + time + "/";
         Configuration conf1 = new Configuration();
        // conf1.set("mapreduce.input.fileinputformat.split.maxsize", "8937398");
-        conf1.set("fs.s3a.access.key", "AKIA3FLDYNYIGCCGAHPZ");
-        conf1.set("fs.s3a.secret.key", "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");
+        // put here access and secret key
+        conf1.set("fs.s3a.access.key", "");
+        conf1.set("fs.s3a.secret.key", "");
         conf1.set("fs.s3a.endpoint", "s3.amazonaws.com");
         conf1.set("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem");
         System.out.println("Configuring First Step");
